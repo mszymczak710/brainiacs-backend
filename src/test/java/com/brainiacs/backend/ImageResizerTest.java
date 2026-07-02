@@ -1,6 +1,7 @@
 package com.brainiacs.backend;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.brainiacs.backend.user.ImageResizer;
 import java.awt.image.BufferedImage;
@@ -50,8 +51,7 @@ class ImageResizerTest {
   void resize_shouldThrow_whenImageIsCorrupted() {
     byte[] garbage = "not-an-image".getBytes();
 
-    org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> imageResizer.resize(garbage, "image/png"))
+    assertThatThrownBy(() -> imageResizer.resize(garbage, "image/png"))
         .isInstanceOf(java.io.IOException.class);
   }
 
