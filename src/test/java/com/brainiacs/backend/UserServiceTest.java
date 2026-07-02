@@ -7,12 +7,7 @@ import com.brainiacs.backend.exception.AvatarNotFoundException;
 import com.brainiacs.backend.exception.EmailAlreadyExistsException;
 import com.brainiacs.backend.exception.InvalidImageException;
 import com.brainiacs.backend.exception.UserNotFoundException;
-import com.brainiacs.backend.user.ImageResizer;
-import com.brainiacs.backend.user.User;
-import com.brainiacs.backend.user.UserDto;
-import com.brainiacs.backend.user.UserPatchDto;
-import com.brainiacs.backend.user.UserRepository;
-import com.brainiacs.backend.user.UserService;
+import com.brainiacs.backend.user.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +26,8 @@ class UserServiceTest {
   @Mock private UserRepository userRepository;
 
   @Mock private ImageResizer imageResizer;
+
+  @Mock private UserMapper userMapper;
 
   @InjectMocks private UserService userService;
 
@@ -51,7 +48,9 @@ class UserServiceTest {
     byte[] avatar = "fake-image".getBytes();
     User user = new User(1L, "Jan", "Kowalski", "jan@test.com", avatar, "image/png");
     Page<User> page = new PageImpl<>(List.of(user));
+    UserDto dto = new UserDto(1L, "Jan", "Kowalski", "jan@test.com", "/api/users/1/avatar");
     when(userRepository.findAll(any(PageRequest.class))).thenReturn(page);
+    when(userMapper.toDto(user)).thenReturn(dto);
 
     Page<UserDto> result = userService.getAllUsers(1, 6);
 
@@ -65,7 +64,9 @@ class UserServiceTest {
   void getAllUsers_shouldReturnNullAvatar_whenAvatarIsNull() {
     User user = new User(1L, "Jan", "Kowalski", "jan@test.com", null, null);
     Page<User> page = new PageImpl<>(List.of(user));
+    UserDto dto = new UserDto(1L, "Jan", "Kowalski", "jan@test.com", null);
     when(userRepository.findAll(any(PageRequest.class))).thenReturn(page);
+    when(userMapper.toDto(user)).thenReturn(dto);
 
     Page<UserDto> result = userService.getAllUsers(1, 6);
 
@@ -77,7 +78,9 @@ class UserServiceTest {
   @Test
   void getUserById_shouldReturnDto_whenUserExists() {
     User user = new User(1L, "Jan", "Kowalski", "jan@test.com", null, null);
+    UserDto dto = new UserDto(1L, "Jan", "Kowalski", "jan@test.com", null);
     when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+    when(userMapper.toDto(user)).thenReturn(dto);
 
     UserDto result = userService.getUserById(1L);
 
@@ -94,7 +97,7 @@ class UserServiceTest {
         .isInstanceOf(UserNotFoundException.class);
   }
 
-  // ───── getAvatar ─────
+  // ───── getAvatar ───── (bez zmian — nie korzysta z mappera)
 
   @Test
   void getAvatar_shouldReturnAvatarData_whenAvatarExists() {
@@ -129,7 +132,9 @@ class UserServiceTest {
   void createUser_shouldSaveAndReturnDto() {
     UserDto dto = new UserDto(null, "Anna", "Nowak", "anna@test.com", null);
     User saved = new User(1L, "Anna", "Nowak", "anna@test.com", "img".getBytes(), "image/png");
+    UserDto savedDto = new UserDto(1L, "Anna", "Nowak", "anna@test.com", "/api/users/1/avatar");
     when(userRepository.save(any(User.class))).thenReturn(saved);
+    when(userMapper.toDto(saved)).thenReturn(savedDto);
 
     UserDto result = userService.createUser(dto);
 
@@ -142,7 +147,9 @@ class UserServiceTest {
   void createUser_shouldHandleNullAvatar() {
     UserDto dto = new UserDto(null, "Anna", "Nowak", "anna@test.com", null);
     User saved = new User(1L, "Anna", "Nowak", "anna@test.com", null, null);
+    UserDto savedDto = new UserDto(1L, "Anna", "Nowak", "anna@test.com", null);
     when(userRepository.save(any(User.class))).thenReturn(saved);
+    when(userMapper.toDto(saved)).thenReturn(savedDto);
 
     UserDto result = userService.createUser(dto);
 
@@ -165,9 +172,11 @@ class UserServiceTest {
   @Test
   void updateUser_shouldUpdateFieldsAndReturnDto() {
     User existing = new User(1L, "Jan", "Kowalski", "jan@test.com", null, null);
-    UserPatchDto dto = new UserPatchDto("Janek", "Nowak", "janek@test.com");
+    UserDto dto = new UserDto(null, "Janek", "Nowak", "janek@test.com", null);
+    UserDto updatedDto = new UserDto(1L, "Janek", "Nowak", "janek@test.com", null);
     when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
     when(userRepository.save(any(User.class))).thenReturn(existing);
+    when(userMapper.toDto(existing)).thenReturn(updatedDto);
 
     UserDto result = userService.updateUser(1L, dto);
 
@@ -179,7 +188,7 @@ class UserServiceTest {
 
   @Test
   void updateUser_shouldThrow_whenUserNotFound() {
-    UserPatchDto dto = new UserPatchDto("Janek", "Nowak", "janek@test.com");
+    UserDto dto = new UserDto(null, "Janek", "Nowak", "janek@test.com", null);
     when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> userService.updateUser(99L, dto))
@@ -189,7 +198,7 @@ class UserServiceTest {
   @Test
   void updateUser_shouldThrow_whenEmailAlreadyTakenByAnotherUser() {
     User existing = new User(1L, "Jan", "Kowalski", "jan@test.com", null, null);
-    UserPatchDto dto = new UserPatchDto(null, null, "taken@test.com");
+    UserDto dto = new UserDto(null, null, null, "taken@test.com", null);
     when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
     when(userRepository.existsByEmail("taken@test.com")).thenReturn(true);
 
@@ -200,24 +209,13 @@ class UserServiceTest {
   }
 
   @Test
-  void updateUser_shouldIgnoreBlankEmail() {
-    User existing = new User(1L, "Jan", "Kowalski", "jan@test.com", null, null);
-    UserPatchDto dto = new UserPatchDto("Janek", null, "");
-    when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
-    when(userRepository.save(any(User.class))).thenReturn(existing);
-
-    UserDto result = userService.updateUser(1L, dto);
-
-    assertThat(result.getEmail()).isEqualTo("jan@test.com");
-    assertThat(result.getFirstName()).isEqualTo("Janek");
-  }
-
-  @Test
   void updateUser_shouldNotCheckUniqueness_whenEmailUnchanged() {
     User existing = new User(1L, "Jan", "Kowalski", "jan@test.com", null, null);
-    UserPatchDto dto = new UserPatchDto(null, null, "jan@test.com");
+    UserDto dto = new UserDto(null, null, null, "jan@test.com", null);
+    UserDto updatedDto = new UserDto(1L, null, null, "jan@test.com", null);
     when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
     when(userRepository.save(any(User.class))).thenReturn(existing);
+    when(userMapper.toDto(existing)).thenReturn(updatedDto);
 
     userService.updateUser(1L, dto);
 
@@ -232,10 +230,12 @@ class UserServiceTest {
     byte[] rawAvatar = "raw-image".getBytes();
     byte[] resizedAvatar = "resized-image".getBytes();
     User saved = new User(1L, "Jan", "Kowalski", "jan@test.com", resizedAvatar, "image/png");
+    UserDto savedDto = new UserDto(1L, "Jan", "Kowalski", "jan@test.com", "/api/users/1/avatar");
 
     when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
     when(imageResizer.resize(rawAvatar, "image/png")).thenReturn(resizedAvatar);
     when(userRepository.save(existing)).thenReturn(saved);
+    when(userMapper.toDto(saved)).thenReturn(savedDto);
 
     UserDto result = userService.updateAvatar(1L, rawAvatar, "image/png");
 

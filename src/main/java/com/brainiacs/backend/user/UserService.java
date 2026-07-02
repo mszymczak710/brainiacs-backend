@@ -17,6 +17,7 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final ImageResizer imageResizer;
+  private final UserMapper userMapper;
 
   public record AvatarData(byte[] bytes, String contentType) {}
 
@@ -30,12 +31,12 @@ public class UserService {
 
   public Page<UserDto> getAllUsers(int page, int size) {
     Pageable pageable = PageRequest.of(page - 1, size);
-    return userRepository.findAll(pageable).map(this::toDto);
+    return userRepository.findAll(pageable).map(userMapper::toDto);
   }
 
   public UserDto getUserById(Long id) {
     User user = userRepository.findById(id).orElseThrow(UserNotFoundException::new);
-    return toDto(user);
+    return userMapper.toDto(user);
   }
 
   public UserDto createUser(UserDto dto) {
@@ -43,30 +44,21 @@ public class UserService {
       throw new EmailAlreadyExistsException();
     }
     User user = new User(null, dto.getFirstName(), dto.getLastName(), dto.getEmail(), null, null);
-    return toDto(userRepository.save(user));
+    return userMapper.toDto(userRepository.save(user));
   }
 
-  public UserDto updateUser(Long id, UserPatchDto dto) {
+  public UserDto updateUser(Long id, UserDto dto) {
     User user = userRepository.findById(id).orElseThrow(UserNotFoundException::new);
 
-    boolean emailProvided = dto.getEmail() != null && !dto.getEmail().isBlank();
-
-    if (emailProvided
-        && !user.getEmail().equals(dto.getEmail())
-        && userRepository.existsByEmail(dto.getEmail())) {
+    if (!user.getEmail().equals(dto.getEmail()) && userRepository.existsByEmail(dto.getEmail())) {
       throw new EmailAlreadyExistsException();
     }
 
-    if (dto.getFirstName() != null) {
-      user.setFirstName(dto.getFirstName());
-    }
-    if (dto.getLastName() != null) {
-      user.setLastName(dto.getLastName());
-    }
-    if (emailProvided) {
-      user.setEmail(dto.getEmail());
-    }
-    return toDto(userRepository.save(user));
+    user.setFirstName(dto.getFirstName());
+    user.setLastName(dto.getLastName());
+    user.setEmail(dto.getEmail());
+
+    return userMapper.toDto(userRepository.save(user));
   }
 
   public UserDto updateAvatar(Long id, byte[] bytes, String contentType) {
@@ -81,7 +73,7 @@ public class UserService {
 
     user.setAvatar(resized);
     user.setAvatarContentType(contentType);
-    return toDto(userRepository.save(user));
+    return userMapper.toDto(userRepository.save(user));
   }
 
   public void deleteUser(Long id) {
@@ -89,10 +81,5 @@ public class UserService {
       throw new UserNotFoundException();
     }
     userRepository.deleteById(id);
-  }
-
-  public UserDto toDto(User u) {
-    String avatarUrl = u.getAvatar() != null ? "/api/users/" + u.getId() + "/avatar" : null;
-    return new UserDto(u.getId(), u.getFirstName(), u.getLastName(), u.getEmail(), avatarUrl);
   }
 }

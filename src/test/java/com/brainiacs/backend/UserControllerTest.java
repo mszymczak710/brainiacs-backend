@@ -6,10 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.brainiacs.backend.exception.AvatarNotFoundException;
+import com.brainiacs.backend.exception.EmailAlreadyExistsException;
+import com.brainiacs.backend.exception.InvalidImageException;
 import com.brainiacs.backend.exception.UserNotFoundException;
 import com.brainiacs.backend.user.UserController;
 import com.brainiacs.backend.user.UserDto;
-import com.brainiacs.backend.user.UserPatchDto;
 import com.brainiacs.backend.user.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -154,8 +155,7 @@ class UserControllerTest {
   @Test
   void create_shouldReturn409_whenEmailAlreadyExists() throws Exception {
     UserDto request = new UserDto(null, "Anna", "Nowak", "anna@test.com", null);
-    when(userService.createUser(any(UserDto.class)))
-        .thenThrow(new com.brainiacs.backend.exception.EmailAlreadyExistsException());
+    when(userService.createUser(any(UserDto.class))).thenThrow(new EmailAlreadyExistsException());
 
     mockMvc
         .perform(
@@ -223,17 +223,17 @@ class UserControllerTest {
         .andExpect(jsonPath("$.firstName").exists());
   }
 
-  // ───── PATCH /api/users/{id} ─────
+  // ───── PUT /api/users/{id} ─────
 
   @Test
   void update_shouldReturn200WithUpdatedUser() throws Exception {
-    UserPatchDto request = new UserPatchDto("Janek", "Nowak", "janek@test.com");
+    UserDto request = new UserDto(null, "Janek", "Nowak", "janek@test.com", null);
     UserDto response = new UserDto(1L, "Janek", "Nowak", "janek@test.com", null);
-    when(userService.updateUser(eq(1L), any(UserPatchDto.class))).thenReturn(response);
+    when(userService.updateUser(eq(1L), any(UserDto.class))).thenReturn(response);
 
     mockMvc
         .perform(
-            patch("/api/users/1")
+            put("/api/users/1")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -244,11 +244,11 @@ class UserControllerTest {
 
   @Test
   void update_shouldReturn400_whenEmailIsInvalid() throws Exception {
-    UserPatchDto request = new UserPatchDto("Anna", "Nowak", "invalid-email");
+    UserDto request = new UserDto(null, "Anna", "Nowak", "invalid-email", null);
 
     mockMvc
         .perform(
-            patch("/api/users/1")
+            put("/api/users/1")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -258,11 +258,11 @@ class UserControllerTest {
 
   @Test
   void update_shouldReturn400_whenFirstNameIsTooShort() throws Exception {
-    UserPatchDto request = new UserPatchDto("A", null, null);
+    UserDto request = new UserDto(null, "A", "Nowak", "anna@test.com", null);
 
     mockMvc
         .perform(
-            patch("/api/users/1")
+            put("/api/users/1")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -271,14 +271,28 @@ class UserControllerTest {
   }
 
   @Test
+  void update_shouldReturn400_whenEmailIsMissing() throws Exception {
+    UserDto request = new UserDto(null, "Anna", "Nowak", null, null);
+
+    mockMvc
+        .perform(
+            put("/api/users/1")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.email").exists());
+  }
+
+  @Test
   void update_shouldReturn404_whenUserNotFound() throws Exception {
-    UserPatchDto request = new UserPatchDto("Janek", "Nowak", "janek@test.com");
-    when(userService.updateUser(eq(99L), any(UserPatchDto.class)))
+    UserDto request = new UserDto(null, "Janek", "Nowak", "janek@test.com", null);
+    when(userService.updateUser(eq(99L), any(UserDto.class)))
         .thenThrow(new UserNotFoundException());
 
     mockMvc
         .perform(
-            patch("/api/users/99")
+            put("/api/users/99")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -287,13 +301,13 @@ class UserControllerTest {
 
   @Test
   void update_shouldReturn409_whenEmailAlreadyTaken() throws Exception {
-    UserPatchDto request = new UserPatchDto(null, null, "taken@test.com");
-    when(userService.updateUser(eq(1L), any(UserPatchDto.class)))
-        .thenThrow(new com.brainiacs.backend.exception.EmailAlreadyExistsException());
+    UserDto request = new UserDto(null, "Janek", "Nowak", "taken@test.com", null);
+    when(userService.updateUser(eq(1L), any(UserDto.class)))
+        .thenThrow(new EmailAlreadyExistsException());
 
     mockMvc
         .perform(
-            patch("/api/users/1")
+            put("/api/users/1")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -360,7 +374,7 @@ class UserControllerTest {
     MockMultipartFile file =
         new MockMultipartFile("file", "avatar.png", "image/png", "not-really-an-image".getBytes());
     when(userService.updateAvatar(eq(1L), any(), eq("image/png")))
-        .thenThrow(new com.brainiacs.backend.exception.InvalidImageException());
+        .thenThrow(new InvalidImageException());
 
     mockMvc
         .perform(multipart(HttpMethod.PUT, "/api/users/1/avatar").with(csrf()).file(file))
