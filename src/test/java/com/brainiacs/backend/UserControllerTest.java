@@ -48,7 +48,7 @@ class UserControllerTest {
   @Test
   void getAll_shouldReturn200WithEmptyPage() throws Exception {
     Page<UserDto> emptyPage = new PageImpl<>(List.of());
-    when(userService.getAllUsers(1, 6)).thenReturn(emptyPage);
+    when(userService.getAllUsers(1, 10)).thenReturn(emptyPage);
 
     mockMvc
         .perform(get("/api/users"))
@@ -61,7 +61,7 @@ class UserControllerTest {
   void getAll_shouldReturn200WithUsers() throws Exception {
     UserDto dto = new UserDto(1L, "Jan", "Kowalski", "jan@test.com", null);
     Page<UserDto> page = new PageImpl<>(List.of(dto));
-    when(userService.getAllUsers(1, 6)).thenReturn(page);
+    when(userService.getAllUsers(1, 10)).thenReturn(page);
 
     mockMvc
         .perform(get("/api/users"))
@@ -78,8 +78,8 @@ class UserControllerTest {
   }
 
   @Test
-  void getAll_shouldReturn400_whenSizeExceedsMax() throws Exception {
-    mockMvc.perform(get("/api/users").param("size", "101")).andExpect(status().isBadRequest());
+  void getAll_shouldReturn400_whenSPageizeExceedsMax() throws Exception {
+    mockMvc.perform(get("/api/users").param("pageSize", "101")).andExpect(status().isBadRequest());
   }
 
   // ───── GET /api/users/{id} ─────
