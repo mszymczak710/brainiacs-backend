@@ -31,20 +31,20 @@ class UserServiceTest {
 
   @InjectMocks private UserService userService;
 
-  // ───── getAllUsers ─────
+  // ───── getUsers ─────
 
   @Test
-  void getAllUsers_shouldReturnEmptyPage_whenNoUsers() {
+  void getUsers_shouldReturnEmptyPage_whenNoUsers() {
     Page<User> emptyPage = new PageImpl<>(List.of());
     when(userRepository.findAll(any(PageRequest.class))).thenReturn(emptyPage);
 
-    Page<UserDto> result = userService.getAllUsers(1, 6);
+    Page<UserDto> result = userService.getUsers(1, 6);
 
     assertThat(result.getContent()).isEmpty();
   }
 
   @Test
-  void getAllUsers_shouldReturnMappedDtos() {
+  void getUsers_shouldReturnMappedDtos() {
     byte[] avatar = "fake-image".getBytes();
     User user = new User(1L, "Jan", "Kowalski", "jan@test.com", avatar, "image/png");
     Page<User> page = new PageImpl<>(List.of(user));
@@ -52,7 +52,7 @@ class UserServiceTest {
     when(userRepository.findAll(any(PageRequest.class))).thenReturn(page);
     when(userMapper.toDto(user)).thenReturn(dto);
 
-    Page<UserDto> result = userService.getAllUsers(1, 6);
+    Page<UserDto> result = userService.getUsers(1, 6);
 
     assertThat(result.getContent()).hasSize(1);
     assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
@@ -61,14 +61,14 @@ class UserServiceTest {
   }
 
   @Test
-  void getAllUsers_shouldReturnNullAvatar_whenAvatarIsNull() {
+  void getUsers_shouldReturnNullAvatar_whenAvatarIsNull() {
     User user = new User(1L, "Jan", "Kowalski", "jan@test.com", null, null);
     Page<User> page = new PageImpl<>(List.of(user));
     UserDto dto = new UserDto(1L, "Jan", "Kowalski", "jan@test.com", null);
     when(userRepository.findAll(any(PageRequest.class))).thenReturn(page);
     when(userMapper.toDto(user)).thenReturn(dto);
 
-    Page<UserDto> result = userService.getAllUsers(1, 6);
+    Page<UserDto> result = userService.getUsers(1, 6);
 
     assertThat(result.getContent().get(0).getAvatar()).isNull();
   }

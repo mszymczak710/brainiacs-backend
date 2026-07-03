@@ -32,10 +32,10 @@ public class UserController {
   private final UserService userService;
 
   @GetMapping
-  public UserPageResponse getAll(
+  public UserPageResponse getUsers(
       @RequestParam(defaultValue = "1") @Min(1) int page,
       @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize) {
-    return UserPageResponse.from(userService.getAllUsers(page, pageSize));
+    return UserPageResponse.from(userService.getUsers(page, pageSize));
   }
 
   @GetMapping("/{id}")

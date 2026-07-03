@@ -29,7 +29,7 @@ public class UserService {
     return new AvatarData(user.getAvatar(), user.getAvatarContentType());
   }
 
-  public Page<UserDto> getAllUsers(int page, int pageSize) {
+  public Page<UserDto> getUsers(int page, int pageSize) {
     Pageable pageable = PageRequest.of(page - 1, pageSize);
     return userRepository.findAll(pageable).map(userMapper::toDto);
   }
