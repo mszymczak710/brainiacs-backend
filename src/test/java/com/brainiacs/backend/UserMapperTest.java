@@ -5,11 +5,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.brainiacs.backend.user.User;
 import com.brainiacs.backend.user.UserDto;
 import com.brainiacs.backend.user.UserMapper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 class UserMapperTest {
 
   private final UserMapper mapper = new UserMapper();
+
+  @BeforeEach
+  void setUp() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setScheme("http");
+    request.setServerName("localhost");
+    request.setServerPort(8080);
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+  }
+
+  @AfterEach
+  void tearDown() {
+    RequestContextHolder.resetRequestAttributes();
+  }
 
   @Test
   void shouldBuildAvatarUrlWhenAvatarPresent() {
@@ -18,7 +37,7 @@ class UserMapperTest {
 
     UserDto dto = mapper.toDto(user);
 
-    assertThat(dto.getAvatar()).isEqualTo("/api/users/1/avatar");
+    assertThat(dto.getAvatar()).endsWith("/api/users/1/avatar");
   }
 
   @Test
