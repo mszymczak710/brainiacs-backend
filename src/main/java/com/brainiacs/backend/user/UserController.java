@@ -34,8 +34,8 @@ public class UserController {
   @GetMapping
   public UserPageResponse getAll(
       @RequestParam(defaultValue = "1") @Min(1) int page,
-      @RequestParam(defaultValue = "6") @Min(1) @Max(100) int size) {
-    return UserPageResponse.from(userService.getAllUsers(page, size));
+      @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize) {
+    return UserPageResponse.from(userService.getAllUsers(page, pageSize));
   }
 
   @GetMapping("/{id}")
