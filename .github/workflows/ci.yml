@@ -68,7 +68,6 @@ jobs:
   deploy:
     name: Deploy to Railway
     runs-on: ubuntu-latest
-    environment: production
     needs: [format, checkstyle, test]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     steps:
