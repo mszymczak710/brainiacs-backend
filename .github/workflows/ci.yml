@@ -28,7 +28,7 @@ jobs:
         run: ./mvnw checkstyle:check
 
   test:
-    name: Unit & integration tests
+    name: Tests & SonarCloud analysis
     runs-on: ubuntu-latest
 
     services:
@@ -48,14 +48,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-project
 
-      - name: Run tests
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run tests and analyze
         env:
           DB_HOST: localhost
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
-        run: ./mvnw test
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true
 
       - name: Publish test report
         if: always()
